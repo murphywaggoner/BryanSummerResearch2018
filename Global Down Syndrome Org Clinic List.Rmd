@@ -1,0 +1,228 @@
+---
+title: "Global Down Syndrome Organization Clinic List"
+author: "M. E. Waggoner"
+date: "June 20, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(rvest)
+require(tidyverse)
+```
+
+##  Scraping the data
+
+
+
+Get a list of states that have clinics.  At first I thought this would be needed to read the websites, but it turns out that I needed for information for each clinic for states with more than one clinic.
+
+```{r}
+
+root_url <- "https://www.globaldownsyndrome.org/research-medical-care/medical-care-providers/"
+  
+GlobalDSFdn <- 
+  read_html(root_url)
+
+
+GlobalDSFdn %>% 
+  html_nodes("#map a") %>% 
+  html_text() %>% 
+  str_to_lower() ->
+  States
+
+States
+
+```
+
+```{r}
+
+
+
+# Create a list of state names and nodes.  
+# There will be one row for each clinic.  
+# Selector Gadget was used to obtain the nodes.
+state_and_node = tibble( state = character(),
+                         node = character())
+
+state_and_node %>% 
+  add_row( state = "iowa", node = "td , #cdd h2") %>% 
+  add_row( state = "colorado", node = "td" ) %>%
+  add_row( state = "delaware", node = "td" ) %>%
+  add_row( state = "louisiana", node = "td" ) %>%
+  add_row( state = "minnesota", node = "td" ) %>%
+  add_row( state = "montana", node = "td" ) %>%
+  add_row( state = "north dakota", node = "td" ) %>%
+  add_row( state = "oregon", node = "td" ) %>%
+  add_row( state = "south dakota", node = "#sanford :nth-child(1)" ) %>%  
+  # add_row( state = "tennessee", node = "td" ) %>%
+  # # add_row( state = "virginia", node = "td" ) %>%  
+  # add_row( state = "washington", node = "td" ) %>%
+  # add_row( state = "massachusetts", node = "table:nth-child(12) td") %>% 
+  # add_row( state = "massachusetts", node = "table:nth-child(9) td , table:nth-child(9) h2") %>% 
+  add_row( state = "arizona", node = "td")   ->
+    state_and_node
+
+# Create a blank tibble for the Clinic data
+# the other variable names will be created on the fly
+Clinics <- tibble(state = character(),
+                  name = character()     )
+
+# For each clinic (i), parse the information from the html
+# and place in the Clinics tibble.
+for (i in 1:nrow(state_and_node)) {
+
+
+  # create the clinich URL by appending the state 
+  # and a backslash to the root URL
+  clinic_url <- paste(root_url, 
+                      state_and_node[i, "state"],
+                      "/", 
+                      sep = "")
+  
+  # read the clinic site html then save the html
+  # (as text) and then parse it using html_text()
+  clinic_site <- read_html(clinic_url)
+
+  clinic_site %>% 
+    html_nodes(as.character(state_and_node[i, "node"]))->
+    clinic_html
+  
+  clinic_html %>% 
+    html_text() %>% 
+    str_replace_all("[\r\n]" , "") ->
+    clinic_text
+  
+  # Start populating the Clinic tibble
+  # all clinics have a state and a name
+  
+  Clinics[i,"state"] <- 
+    string_to_title(state_and_node[i, "state"])
+  Clinics[i,"name"] <- clinic_text[1]
+  
+  # loop through each line of the html text pulling out
+  # variable data and storing it in Clinics tibble
+  for(n in 2:length(clinic_text)) {
+  
+    # n_service is a flag that there was a services form
+    # to read from - initially set to FALSE
+    n_service <- FALSE
+  
+    # grab the position of a final ":" or "?"
+    # these indicate a variable title and the data following
+    # in the next line is the data for that variable
+    pos <- str_locate(clinic_text[n], ":$")[1]
+    if (is.na(pos)) {
+      pos <- str_locate(clinic_text[n], "\\?$")[1]
+      }
+    
+    # if there was a final ":" or "?"
+    # create the variable name (var_name) from the text
+    # preceding the punctuation and remove all spaces
+    # If the variable name is "Servicesprovided" set the
+    # n_service flag to TRUE so we can parse the services
+    if (!is.na(pos) ) {
+      var_name <- clinic_text[n] %>% 
+        str_sub(1, pos - 1) %>% 
+        str_replace_all(" " , "")
+      Clinics[i, var_name] <- clinic_text[n + 1]
+      if (var_name == "Servicesprovided") {
+        n_service <- TRUE
+      }
+    }
+  }
+  
+  # If there was a ServicesProvided form, then
+  # parse the three columns
+  
+  if(n_service) {
+    
+    # create a blank location tibble for each clinic
+    # we will store the parsed information there
+    location <- tibble(start = numeric(), 
+                       end = numeric(),
+                       text = character(),
+                       checked = logical())
+    
+    # loop through each column 
+    for (m in 1:3) {
+      
+      #create a node name for each column
+      # read the HTML for that node
+      # convert to text and split at the beginning of 
+      # each tag - some of these tags are checkboxes
+      node <- paste("td:nth-child(",
+                    as.character(m),
+                    ") form", 
+                    sep = "")
+      clinic_site %>% 
+        html_node(node)  -> form
+      as.character(form) -> mytext
+      str_split(mytext, "<") -> mytext2
+      
+      # loop through each line we split out from the 
+      # HTLM code
+      strs <- length(mytext2[[1]])
+      for (k in 1:strs){
+        
+        # look for end of the tag (> character)
+        # the service provided will follow the tag end
+        # save the start and end indices in the location
+        # tibble - making sure to allow for the 2nd
+        # and 3rd columns (k + (m - 1)*strs)
+        tag_end <- str_locate(mytext2[[1]][k], "[^>]*$")
+        location[k + (m-1)*strs, 1] <- tag_end[1]
+        location[k + (m-1)*strs, 2] <- tag_end[2]
+        
+        
+        # if the end location is greater than the 
+        # start location, this means there was a tag 
+        # on that line
+        if (location[k + (m-1)*strs, 1] < 
+            location[k + (m-1)*strs,2]) {
+          
+          # If there was a tag, then extract the
+          # variable name from the end of the line
+          # after the tag end, remove spaces and slashes
+          location[k + (m-1)*strs, 3] <- 
+            str_extract(mytext2[[1]][k], "[^>]*$") %>% 
+            str_replace_all(" " , "") %>% 
+            str_replace_all("/" , "")
+        
+          # check to see if there is the word "true"" or    
+          #  "checked" on the line.  If so
+          # then the service is offered
+          location[k + (m-1)*strs, 4] <- FALSE
+          log_loc <- str_locate(mytext2[[1]][k], "true")
+          if (is.na(log_loc[1]) ) {
+            log_loc <- 
+              str_locate(mytext2[[1]][k], "checked")
+          }
+          if (!is.na(log_loc[1]) && 
+              log_loc[1] < log_loc[2]) {
+            location[k + (m-1)*strs, 4] <- TRUE
+          }
+        } 
+      }
+    }
+    location %>% 
+      filter(!is.na(text)) -> location
+    for (j in 1:nrow(location)) {
+      var_name <- as.character(location[j, 3])
+      Clinics[i, var_name] <- location[j, 4]
+    }
+  
+   }
+}
+Clinics 
+
+
+
+```
+## Issues
+
+* Need the nodes for the rest of the clinics.
+
+    * It appears that "td" will work for states with only 1 clinic.
+    
+* The group made some phone calls and need to incorporate the information they have from there.
