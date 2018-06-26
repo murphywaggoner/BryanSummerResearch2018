@@ -541,7 +541,7 @@ DSSurvey %>%
 
 
 
-# income and DS education Therapies 
+# income and DS education against therapies 
 
 DSSurvey %>% 
   filter(income == "Less than $10,000"
@@ -597,9 +597,6 @@ DSSurvey %>%
   ggtitle('DS Education vs income for Music Therapy')
 
 
-
-
-
 # Clinic Distance vs Frequency of Clinic Visits against income
 
 DSSurvey %>% 
@@ -622,6 +619,25 @@ DSSurvey %>%
   geom_jitter() +
   # geom_smooth(aes(x = as.numeric(clinicdistance), y = as.numeric(DSvisit), weight = income)) +
   ggtitle('Distance from Clinic vs Frequency of Visits') 
+
+#DS Education vs Frequency of Clinic Visits
+
+DSSurvey %>% 
+  filter(!is.na(DSeducation)) %>% 
+  ggplot(aes(x = DSvisit, y = DSeducation, color =  DSage)) +
+  geom_point(na.rm = TRUE, size = 10) +
+  ggtitle('DSeducation vs DSvisit')
+
+# Clinic attendance vs State vs. Distance travelled
+
+DSSurvey %>%
+  filter(!is.na(clinicdistance)) %>% 
+  ggplot(aes(x = DSvisit, y = clinicdistance)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('Clinic attendance vs State vs. Distance travelled') +
+  facet_wrap(~state) 
+
 
 
 ```
