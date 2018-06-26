@@ -57,12 +57,12 @@ DSSurveyraw %>%
           firstnotified2	=	X__16	,
           autism	=	X__17	,
           ADHD	=	X__18	,
-          PT	=	X__19	,
-          OT	=	X__20	,
-          feeding	=	X__21	,
-          speech	=	X__22	,
-          music	=	X__23	,
-          equine	=	X__24	,
+          therapy_PT	=	X__19	,
+          therapy_OT	=	X__20	,
+          therapy_feeding	=	X__21	,
+          therapy_speech	=	X__22	,
+          therapy_music	=	X__23	,
+          therapy_equine	=	X__24	,
           DSeducation	=	X__25	,
           DSvisit	=	X__26	,
           clinic	=	X__27	,
@@ -219,13 +219,6 @@ DSSurvey %>%
 # List columns to convert Yes/No responses to logical
 logical_cols <- c("ADHD",
                   "autism",
-                  "equine",
-                  "feeding",
-                  "independent",
-                  "music",
-                  "OT",
-                  "PT",
-                  "speech",
                   "substance_abuse"
                   )  
 
@@ -356,12 +349,24 @@ all_that_apply_cols <- c( "clinic_full",
                           "substance_therapy"
                           )
 
+# Columns where unsure = NA
+unsure_cols <- c( "therapy_PT",
+                  "therapy_OT",
+                  "therapy_feeding",
+                  "therapy_speech",
+                  "therapy_music",
+                  "therapy_equine"
+                  )
+
 # Make the conversions needed on the lists above
 DSSurvey %>% 
   mutate_at(factor_cols, as.factor) %>% 
   mutate_at(logical_cols, funs(if_else( . == "Yes", TRUE, FALSE)) ) %>% 
   mutate_at(numeric_cols, as.numeric ) %>%
-  mutate_at(all_that_apply_cols, funs(if_else( is.na(.), FALSE, TRUE)) )  ->
+  mutate_at(all_that_apply_cols, funs(if_else( is.na(.), FALSE, TRUE)) ) %>% 
+  mutate_at(unsure_cols, funs(if_else( . == "Yes", 
+                                       TRUE, 
+                                       if_else( . == "No", FALSE, NA))))->
   DSSurvey
 
 
@@ -407,8 +412,8 @@ DSSurvey %>%
                              "Ph.D., law, or medical degree"))) %>%
   mutate(DSvisit = 
            factor(DSvisit, 
-                  levels = c("No", "Yes, once", 
-                             "Yes, yearly or more"))) %>%
+                  levels = c("No", "Yes; once", 
+                             "Yes; yearly or more"))) %>%
   mutate(clinicdistance = 
            factor(clinicdistance,
                   levels = c("0-20 miles", "20-40 miles", 
@@ -416,10 +421,10 @@ DSSurvey %>%
                              "80-100 miles")))  %>% 
   mutate(income = 
            factor(income,
-                  levels = c("less than $10,000", "$10,000-25,000", 
+                  levels = c("Less than $10,000", "$10,000-25,000", 
                              "$25,000-35,000", "$35,000-50,000", 
                              "$50,000-75,000", "$75,000-100,000", 
-                             "$100,000-150,000", "more than $150,000" ))) %>% 
+                             "$100,000-150,000", "$150,000 or more"))) %>% 
   mutate(visitstotal = 
            factor(visitstotal,
                   levels = c("0-2", "3-5", 
@@ -476,14 +481,13 @@ st_wo_errors <- tibble(state = state.name,
  
 
   
-DSSurvey %>% 
-  mutate(state_reported = str_to_title(state_reported)) %>% 
-  left_join(st_w_errors, by  = c("state_reported" = "state")) %>% 
-  mutate(location_abb = if_else(is.na(location_abb), 
+DSSurvey %>%
+  mutate(state_reported = str_to_title(state_reported)) %>%
+  left_join(st_w_errors, by  = c("state_reported" = "state")) %>%
+  mutate(location_abb = if_else(is.na(location_abb),
                                 str_to_upper(state_reported),
-                                location_abb))  %>% 
+                                location_abb))  %>%
   left_join(st_wo_errors, by = c("location_abb")) -> DSSurvey
-  
                   
 ```
 
@@ -507,8 +511,140 @@ DSSurvey %>%
   geom_jitter() +
   facet_wrap(~ income)
 
+DSSurvey %>% 
+  select(income)
+
 
 ```
+
+#Data Play Time  
+```{r}
+
+#Sample Plot
+
+DSSurvey %>% 
+  ggplot(aes(x = visitstotal, y = clinicdistance, color =  gender_DS)) +
+  geom_point() +   
+  geom_jitter() +
+  facet_wrap(~ income)
+  
+# Income vs Clinic Visits
+
+DSSurvey %>% 
+  group_by(income, DSvisit) %>% 
+  summarize(n = n()) %>% 
+  filter(!is.na(income)) %>% 
+  ggplot(aes(x = DSvisit, y = income, color =  n)) +
+  geom_point(na.rm = TRUE, size = 10) +
+  ggtitle('Income vs Clinic Visits')
+
+
+
+
+# income and DS education against therapies 
+
+DSSurvey %>% 
+  filter(income == "Less than $10,000"
+         ) %>% 
+  select(income, DSeducation, therapy_equine, DSage, ed_respond)
+
+DSSurvey %>% 
+  filter(!is.na(income)) %>%
+  #melt()
+  ggplot(aes(x = DSeducation, y = income, color = therapy_equine)) +
+  geom_point() +   
+  geom_jitter() +
+  ggtitle('DS Education vs income for Equine Therapy') 
+
+DSSurvey %>% 
+  filter(!is.na(income)) %>%
+  filter(!is.na(DSeducation)) %>%
+  ggplot(aes(x = DSeducation, y = income, color = therapy_PT)) +
+  geom_point() +   
+  geom_jitter() +
+  ggtitle('DS Education vs income for Physical Therapy')
+
+DSSurvey %>% 
+  filter(!is.na(income)) %>%
+  filter(!is.na(DSeducation)) %>%
+  ggplot(aes(x = DSeducation, y = income, color = therapy_OT)) +
+  geom_point() +   
+  geom_jitter() +
+  ggtitle('DS Education vs income for Occupational Therapy')
+
+DSSurvey %>% 
+  filter(!is.na(income)) %>%
+  filter(!is.na(DSeducation)) %>%
+  ggplot(aes(x = DSeducation, y = income, color = therapy_feeding)) +
+  geom_point() +   
+  geom_jitter() +
+  ggtitle('DS Education vs income for Feeding Therapy')
+
+DSSurvey %>% 
+  filter(!is.na(income)) %>%
+  filter(!is.na(DSeducation)) %>%
+  ggplot(aes(x = DSeducation, y = income, color = therapy_speech)) +
+  geom_point() +   
+  geom_jitter() +
+  ggtitle('DS Education vs income for Speech Therapy')
+
+DSSurvey %>% 
+  filter(!is.na(income)) %>%
+  filter(!is.na(DSeducation)) %>%
+  ggplot(aes(x = DSeducation, y = income, color = therapy_music)) +
+  geom_point() +   
+  geom_jitter() +
+  ggtitle('DS Education vs income for Music Therapy')
+
+
+# Clinic Distance vs Frequency of Clinic Visits against income
+
+DSSurvey %>% 
+  filter(!is.na(clinicdistance)) %>%
+  ggplot(aes(x = DSvisit, y = clinicdistance, color = DSage)) +
+  geom_point() +   
+  geom_jitter() +
+  ggtitle('Distance from Clinic vs Frequency of Visits') +
+  facet_wrap(~income)
+
+
+# Clinic Distance vs Frequency of Clinic Visits with Curve
+
+DSSurvey %>% 
+  group_by(clinicdistance, DSvisit) %>%
+  summarize(n = n()) %>%
+  filter(!is.na(clinicdistance)) %>%
+  ggplot(aes(x = clinicdistance, y = DSvisit, color = n)) +
+  geom_point() +   
+  geom_jitter() +
+  geom_smooth(aes(x = as.numeric(clinicdistance), y = as.numeric(DSvisit), weight = n)) +
+  ggtitle('Distance from Clinic vs Frequency of Visits') 
+
+#DS Education vs Frequency of Clinic Visits
+
+DSSurvey %>% 
+  #filter(!is.na(DSeducation)) %>% 
+  ggplot(aes(x = DSage, y = DSeducation, color =  DSvisit)) +
+  geom_point(na.rm = TRUE) +
+  geom_jitter() +
+  ggtitle('DSeducation vs DSvisit')
+
+# Clinic attendance vs State vs. Distance travelled
+
+DSSurvey %>%
+  filter(!is.na(clinicdistance)) %>% 
+  ggplot(aes(x = clinicdistance, y = state, color = DSvisit)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('Clinic attendance vs State vs. Distance travelled') 
+
+DSSurvey %>% 
+  select(contains('concern')) %>% 
+  summary()
+
+```
+
+
 
 ```{r}
 
@@ -596,4 +732,3 @@ ggplot() +
 
 
 ```
-
