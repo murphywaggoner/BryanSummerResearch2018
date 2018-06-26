@@ -243,7 +243,6 @@ factor_cols <- c( "clinic",
                   "guardian",
                   "health2",
                   "insurance",
-                  "insurance2",
                   "language",
                   "language2",
                   "livingsituation",
@@ -357,6 +356,7 @@ unsure_cols <- c( "therapy_PT",
                   "therapy_music",
                   "therapy_equine"
                   )
+
 
 # Make the conversions needed on the lists above
 DSSurvey %>% 
@@ -477,9 +477,6 @@ st_w_errors <- tibble(state = state.name,
 
 st_wo_errors <- tibble(state = state.name,
                        location_abb = state.abb)
-
- 
-
   
 DSSurvey %>%
   mutate(state_reported = str_to_title(state_reported)) %>%
@@ -489,6 +486,33 @@ DSSurvey %>%
                                 location_abb))  %>%
   left_join(st_wo_errors, by = c("location_abb")) -> DSSurvey
                   
+DSSurvey %>% 
+  select(insurance, insurance2) %>% 
+  mutate(test = funs(if(is.na(insurance) & 
+                    str_detect(insurance2, "Medicaid")){
+                      .<-as.factor("Public")}
+         )
+  )
+                    
+?str_detect                     
+DSSurvey %>% 
+  select(insurance, insurance2) %>% 
+  filter(is.na(insurance))
+
+dim(DSSurvey)
+
+
+
+
+
+
+DSSurvey %>% 
+  select(firstnotified, firstnotified2) %>% 
+  filter(!is.na(firstnotified2)) %>% 
+  write_excel_csv('firstnotified.csv')
+
+levels(DSSurvey$firstnotified)
+
 ```
 
 ```{r}
@@ -512,8 +536,13 @@ DSSurvey %>%
   facet_wrap(~ income)
 
 DSSurvey %>% 
-  select(income)
+  gather(key = sexED, value = c('gender_DS', 'DSage', 'income'))
 
+DSSurvey %>% 
+  #filter(DSage < 18) %>% 
+  ggplot(aes(x = gender_DS, y = DSage, color = sexED_no)) +
+  geom_point() +
+  geom_jitter() 
 
 ```
 
@@ -642,6 +671,76 @@ DSSurvey %>%
   select(contains('concern')) %>% 
   summary()
 
+# Age and Gender vs Regression types
+DSSurvey %>%
+  filter(!is.na(regress)) %>% 
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress') 
+
+DSSurvey %>%
+  filter(!is.na(regress_cat)) %>% 
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress_cat)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress (CAT)') 
+
+DSSurvey %>%
+  filter(!is.na(regress_dress)) %>% 
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress_dress)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress (DRESS)') 
+
+DSSurvey %>%
+  filter(!is.na(regress_attend)) %>% 
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress_attend)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress (ATTEND)') 
+
+DSSurvey %>%
+  filter(!is.na(regress_RW)) %>% 
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress_RW)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress (RW)') 
+
+DSSurvey %>%
+  filter(!is.na(regress_social)) %>% 
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress_social)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress (SOCIAL)') 
+
+DSSurvey %>%
+  filter(!is.na(regress_dress)) %>% 
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress_dress)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress (DRESS)') 
+
+DSSurvey %>%
+  filter(!is.na(regress_selfcare)) %>%
+  filter(!is.na(gender_DS)) %>%
+  ggplot(aes(x = gender_DS, y = DSage, color = regress_selfcare)) +
+  geom_point(na.rm = TRUE, size = 1) +
+  geom_jitter() +
+  ggtitle('gender vs age vs. did they regress (SELFCARE)')
+
+# Boxplot age vs did they regress
+
+# DSSurvey %>% 
+#   ggplot(x = regress, y = age) +
+#   geom_boxplot()
 ```
 
 
