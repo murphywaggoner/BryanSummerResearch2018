@@ -63,10 +63,10 @@ DSSurveyraw %>%
           health_apnea	=	X__50	,
           health_lowiron	=	X__51	,
           health_thyroid	=	X__52	,
-          health_swallaw	=	X__53	,
+          health_swallow	=	X__53	,
           health_ALZ	=	X__54	,
           health_hiBP	=	X__55	,
-          health_CDH	=	X__56	,
+          health_CHD	=	X__56	,
           health_none	=	X__57	,
           health2	=	X__58	,
           diag_celiac	=	X__59	,
@@ -78,7 +78,7 @@ DSSurveyraw %>%
           diag_swallow	=	X__65	,
           diag_ALZ	=	X__66	,
           diag_hiBP	=	X__67	,
-          diag_CDH	=	X__68	,
+          diag_CHD	=	X__68	,
           diag_other	=	X__69	,
           concern_celiac	=	X__70	,
           concern_diabetes	=	X__71	,
@@ -89,7 +89,7 @@ DSSurveyraw %>%
           concern_swallow	=	X__76	,
           concern_ALZ	=	X__77	,
           concern_hiBP	=	X__78	,
-          concern_CDH	=	X__79	,
+          concern_CHD	=	X__79	,
           concern_other	=	X__80	,
           livingsituation	=	X__81	,
           livingsituation2	=	X__82	,
@@ -198,7 +198,7 @@ logical_cols <- c("ADHD",
 factor_cols <- c( "clinic",
                   "diag_ALZ",
                   "diag_apnea",
-                  "diag_CDH",
+                  "diag_CHD",
                   "diag_celiac",
                   "diag_diabetes",
                   "diag_hiBP",
@@ -239,7 +239,7 @@ factor_cols <- c( "clinic",
 # List columns to convert responses to numeric
 numeric_cols <- c("concern_ALZ",
                   "concern_apnea",
-                  "concern_CDH",
+                  "concern_CHD",
                   "concern_celiac",
                   "concern_diabetes",
                   "concern_hiBP",
@@ -273,13 +273,13 @@ all_that_apply_cols <- c( "clinic_full",
                           "clinic_notime",
                           "health_ALZ",
                           "health_apnea",
-                          "health_CDH",
+                          "health_CHD",
                           "health_celiac",
                           "health_diabetes",
                           "health_hiBP",
                           "health_leuk",
                           "health_lowiron",
-                          "health_swallaw",
+                          "health_swallow",
                           "health_thyroid",
                           "mental_will_culture",
                           "mental_will_faith",
@@ -359,6 +359,14 @@ DSSurvey %>%
   mutate(DSage = 2018 - DSbirthyear) ->
   DSSurvey
 
+# create a diagnoses_total column
+DSSurvey %>% 
+  mutate(diagnoses_total = health_celiac + health_diabetes + health_leuk + 
+           health_apnea + health_lowiron + health_thyroid + health_swallow + 
+           health_ALZ + health_hiBP + health_CHD) %>% 
+  select(diagnoses_total, health_celiac:health_CHD) ->
+  not_DSSurvey
+  
 
 
 # factor variables where levels need to be ordered
