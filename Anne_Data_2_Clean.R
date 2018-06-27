@@ -1,4 +1,3 @@
-
 #######################################
 #
 # Initial cleaning of variables that can
@@ -359,7 +358,11 @@ DSSurvey %>%
   mutate(DSage = 2018 - DSbirthyear) ->
   DSSurvey
 
-
+# create a diagnoses_total column
+DSSurvey %>% 
+  mutate(diagnoses_total = health_celiac + health_diabetes + health_leuk + 
+           health_apnea + health_lowiron + health_thyroid + health_swallow + 
+           health_ALZ + health_hiBP + health_CHD)   -> DSSurvey
 
 # factor variables where levels need to be ordered
 DSSurvey %>%
