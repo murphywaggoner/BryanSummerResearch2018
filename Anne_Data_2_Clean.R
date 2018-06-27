@@ -1,4 +1,3 @@
-
 #######################################
 #
 # Initial cleaning of variables that can
@@ -363,11 +362,7 @@ DSSurvey %>%
 DSSurvey %>% 
   mutate(diagnoses_total = health_celiac + health_diabetes + health_leuk + 
            health_apnea + health_lowiron + health_thyroid + health_swallow + 
-           health_ALZ + health_hiBP + health_CHD) %>% 
-  select(diagnoses_total, health_celiac:health_CHD) ->
-  not_DSSurvey
-  
-
+           health_ALZ + health_hiBP + health_CHD)   -> DSSurvey
 
 # factor variables where levels need to be ordered
 DSSurvey %>%
@@ -466,3 +461,68 @@ DSSurvey %>%
                                 str_to_upper(state_reported),
                                 location_abb))  %>% 
   left_join(st_wo_errors, by = c("location_abb")) -> DSSurvey
+
+
+
+# cleans insurance, should be general 
+
+
+
+DSSurvey %>% 
+  mutate(insurance = as.character(insurance)) %>% 
+  mutate(insurance = if_else(!is.na(insurance2) & (str_detect(insurance2, "Medicare") | str_detect(insurance2, "Medicaid")) &
+                               is.na(insurance),
+                             "Public",
+                             insurance
+  )
+  ) %>% 
+  mutate(insurance = if_else(!is.na(insurance2) &
+                               (str_detect(insurance2, "Medicare") | str_detect(insurance2, "Medicaid")) &
+                               str_detect(insurance, "Private"),
+                             "Both",
+                             insurance)
+  ) %>% 
+  mutate(insurance = if_else(!is.na(insurance2) &
+                               str_detect(insurance2, "but my DS child is only co"),
+                             "Public",
+                             insurance)
+  ) %>% 
+  mutate(insurance = as.factor(insurance)) %>% 
+  select(-insurance2) -> DSSurvey
+
+
+
+# cleans firstnotified - specific to current data (185 responses)
+
+
+
+DSSurvey %>% 
+  mutate(firstnotified = as.character(firstnotified)) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) & 
+                                   (str_detect(firstnotified2, "ultrasound") | 
+                                      str_detect(firstnotified2, "Sonogram") | 
+                                      str_detect(firstnotified2, "testing in utero of fluid")),
+                                 "Ultrasound",
+                                 firstnotified
+  )
+  ) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) &
+                                   (str_detect(firstnotified2, "just a screening blood test") | 
+                                      str_detect(firstnotified2, "Blood work, I believe")),
+                                 "Non-invasive prenatal testing such as Materniti21",
+                                 firstnotified)
+  ) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) &
+                                   (str_detect(firstnotified2, "Birth Diagnosis") | 
+                                      str_detect(firstnotified2, "several hours after birth") | 
+                                      str_detect(firstnotified2, "a few hours after")),
+                                 "Post-natal; immediately after birth",
+                                 firstnotified)
+  ) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) &
+                                   (str_detect(firstnotified2, "3 months after")),
+                                 "Post-natal; a day or more after birth",
+                                 firstnotified)
+  ) %>% 
+  mutate(firstnotified = as.factor(firstnotified)) %>% 
+  select(-firstnotified2) -> DSSurvey
