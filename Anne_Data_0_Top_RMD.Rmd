@@ -1,0 +1,90 @@
+---
+title: "My Rmd"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+require(knitr)
+source("Anne_Data_1_Read.R")
+source("Anne_Data_2_Clean.R")
+opts_chunk$set(echo = TRUE)
+```
+
+## Setup chunck
+
+The setup chunk above reads in, executes, but does not echo the code in the R scripts `Anne_Data_1_Read.R` and `Anne_Data_2_Read.R`.  You need those two files in the same folder as this Rmd file and as the `Annedata.xlsx` file.
+
+## Gathering in Order to Facet_wrap
+
+This plot gathers the tibble into a taller tibble.  All of the columns that start with "therapy" are gathered into one column called `therapy`.  Frankly, I don't know what purpose the `value = "DSAge"` parameter serves.
+
+```{r}
+
+
+DSSurvey %>% 
+  gather(key = "therapy", value = "DSAge", matches("^therapy") ) %>% 
+  ggplot(aes(x = visitstotal, y = income)) + 
+  geom_jitter() +
+  facet_wrap(~ therapy)
+
+```
+
+## Cleaning insurance
+
+We were hit by the `NA` bug on this one.  We have to make sure that you account for `NA` in each of the `if_else()` statements.  This was complicated by the fact that the `NA` rules are difference for character and factor data.  To resolve that issue, all is converted to character before processing and then converted back to factor at the end.
+
+```{r}
+# cleans insurance, should be general 
+DSSurvey %>% 
+  mutate(insurance = as.character(insurance)) %>% 
+  mutate(insurance = if_else(!is.na(insurance2) & (str_detect(insurance2, "Medicare") | str_detect(insurance2, "Medicaid")) &
+                          is.na(insurance),
+                        "Public",
+                        insurance
+                        )
+         ) %>% 
+  mutate(insurance = if_else(!is.na(insurance2) &
+                               (str_detect(insurance2, "Medicare") | str_detect(insurance2, "Medicaid")) &
+                               str_detect(insurance, "Private"),
+                             "Both",
+                             insurance)
+         ) %>% 
+  mutate(insurance = if_else(!is.na(insurance2) &
+                                 str_detect(insurance2, "but my DS child is only co"),
+                             "Public",
+                             insurance)
+           ) %>% 
+  mutate(insurance = as.factor(insurance)) %>% 
+  select(-insurance2) -> DSSurvey
+  
+
+# cleans firstnotified - specific to current data (185 responses)
+DSSurvey %>% 
+  mutate(firstnotified = as.character(firstnotified)) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) & (str_detect(firstnotified2, "ultrasound") | str_detect(firstnotified2, "Sonogram") | str_detect(firstnotified2, "testing in utero of fluid")),
+                        "Ultrasound",
+                        firstnotified
+                        )
+         ) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) &
+                               (str_detect(firstnotified2, "just a screening blood test") | str_detect(firstnotified2, "Blood work, I believe")),
+                             "Non-invasive prenatal testing such as Materniti21",
+                             firstnotified)
+         ) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) &
+                               (str_detect(firstnotified2, "Birth Diagnosis") | str_detect(firstnotified2, "several hours after birth") | str_detect(firstnotified2, "a few hours after")),
+                             "Post-natal; immediately after birth",
+                             firstnotified)
+         ) %>% 
+  mutate(firstnotified = if_else(is.na(firstnotified) &
+                               (str_detect(firstnotified2, "3 months after")),
+                             "Post-natal; a day or more after birth",
+                             firstnotified)
+        ) %>% 
+  mutate(firstnotified = as.factor(firstnotified)) %>% 
+  select(-firstnotified2) -> DSSurvey
+
+
+```
+
+
